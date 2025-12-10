@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <title>Керування тренерами</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+
+    {{> menu}}
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>База тренерів</h2>
+            <button class="btn btn-success shadow" data-bs-toggle="modal" data-bs-target="#addTrainerModal">
+                + Новий тренер
+            </button>
+        </div>
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="ps-4">Фото</th> <th>Ім'я</th>
+                                <th>Контакти</th>
+                                <th>Досвід</th>
+                                <th class="text-end pe-4">Дії</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each trainers}}
+                            <tr>
+                                <td class="ps-4">
+                                    {{#if this.photo}}
+                                        <img src="/trainer/image/{{this.id}}" alt="photo" class="rounded-circle" style="width: 50px; height: 50px; object-fit: cover;">
+                                    {{else}}
+                                        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white" style="width: 50px; height: 50px;">📷</div>
+                                    {{/if}}
+                                </td>
+                                <td class="fw-bold">{{this.full_name}}</td>
+                                <td>
+                                    <div>📧 {{this.email}}</div>
+                                    <div class="small text-muted">📱 {{this.phone}}</div>
+                                </td>
+                                <td>{{this.experience}} років</td>
+                                <td class="text-end pe-4">
+                                    <button class="btn btn-sm btn-outline-primary me-1" 
+                                            data-id="{{this.id}}" 
+                                            data-name="{{this.full_name}}" 
+                                            data-email="{{this.email}}" 
+                                            data-phone="{{this.phone}}"
+                                            data-exp="{{this.experience}}"
+                                            data-desc="{{this.description}}"
+                                            onclick="openEditTrainerModal(this)">
+                                        ✏️ Редагувати
+                                    </button>
+                                    <form action="/manager/trainers/delete" method="POST" class="d-inline" onsubmit="return confirm('Видалити цього тренера?')">
+                                        <input type="hidden" name="id" value="{{this.id}}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {{/each}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="addTrainerModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Новий тренер</h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form action="/manager/trainers/add" method="POST" enctype="multipart/form-data">
+                        <div class="mb-3 text-center">
+                            <label class="form-label fw-bold">Фото профілю</label>
+                            <input type="file" name="photo" class="form-control" accept="image/*">
+                        </div>
+                        <div class="mb-2"><label>ПІБ</label><input type="text" name="full_name" class="form-control" required></div>
+                        <div class="mb-2"><label>Email (Логін)</label><input type="email" name="email" class="form-control" required></div>
+                        <div class="mb-2"><label>Телефон</label><input type="text" name="phone" class="form-control" required></div>
+                        <div class="row mb-2">
+                            <div class="col-4"><label>Досвід (років)</label><input type="number" name="experience" class="form-control" required></div>
+                            <div class="col-8">
+                                <label>Пароль</label>
+                                <input type="text" name="password" class="form-control" required placeholder="Створіть пароль...">
+                            </div>
+                        </div>
+                        <div class="mb-3"><label>Опис</label><textarea name="description" class="form-control" rows="2"></textarea></div>
+                        <button type="submit" class="btn btn-success w-100">Створити</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="editTrainerModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Редагування тренера</h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form action="/manager/trainers/edit" method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="id" id="editId">
+                        <div class="mb-3 p-3 bg-light rounded text-center">
+                            <label class="form-label small text-muted">Змінити фото (необов'язково)</label>
+                            <input type="file" name="photo" class="form-control form-control-sm" accept="image/*">
+                        </div>
+                        <div class="mb-2"><label>ПІБ</label><input type="text" name="full_name" id="editName" class="form-control" required></div>
+                        <div class="mb-2"><label>Email</label><input type="email" name="email" id="editEmail" class="form-control" required></div>
+                        <div class="mb-2"><label>Телефон</label><input type="text" name="phone" id="editPhone" class="form-control" required></div>
+                        <div class="mb-2"><label>Досвід</label><input type="number" name="experience" id="editExp" class="form-control" required></div>
+                        <div class="mb-3"><label>Опис</label><textarea name="description" id="editDesc" class="form-control" rows="2"></textarea></div>
+                        <hr>
+                        <div class="mb-3">
+                            <label class="fw-bold text-danger">Змінити пароль (необов'язково)</label>
+                            <input type="text" name="new_password" class="form-control" placeholder="Залиште пустим, якщо не змінюєте">
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Зберегти зміни</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{> footer}}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function openEditTrainerModal(btn) {
+            document.getElementById('editId').value = btn.dataset.id;
+            document.getElementById('editName').value = btn.dataset.name;
+            document.getElementById('editEmail').value = btn.dataset.email;
+            document.getElementById('editPhone').value = btn.dataset.phone;
+            document.getElementById('editExp').value = btn.dataset.exp;
+            document.getElementById('editDesc').value = btn.dataset.desc;
+            new bootstrap.Modal(document.getElementById('editTrainerModal')).show();
+        }
+    </script>
+</body>
+</html>

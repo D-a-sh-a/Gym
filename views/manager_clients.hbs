@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+  <title>Керування клієнтами</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body class="bg-light d-flex flex-column min-vh-100">
+  {{> menu}}
+  <div class="container mt-4">
+    <div class="row mb-4 align-items-center">
+      <div class="col-md-4">
+        <h2>База клієнтів</h2>
+      </div>
+      <div class="col-md-5">
+        <form action="/manager/clients" method="GET" class="d-flex">
+          <input type="text" name="search" class="form-control me-2" placeholder="Пошук..." value="{{searchQuery}}">
+          <button type="submit" class="btn btn-outline-success">🔍</button>
+          {{#if searchQuery}}<a href="/manager/clients" class="btn btn-outline-secondary ms-1">❌</a>{{/if}}
+        </form>
+      </div>
+      <div class="col-md-3 text-end">
+        <button class="btn btn-success shadow" data-bs-toggle="modal" data-bs-target="#registerModal">+ Новий
+          клієнт</button>
+      </div>
+    </div>
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-dark">
+              <tr>
+                <th class="ps-4">Ім'я</th>
+                <th>Контакти</th>
+                <th>Статус абонемента</th>
+                <th class="text-end pe-4">Дії</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each clients}}
+              <tr>
+                <td class="ps-4 fw-bold">{{this.full_name}}</td>
+                <td>
+                  <div>📧 {{this.email}}</div>
+                  <div class="small text-muted">📱 {{this.phone}}</div>
+                </td>
+                <td>
+                  <span class="badge bg-{{this.subscription_status.class}}">
+                    {{this.subscription_status.text}}
+                  </span>
+                  {{#if this.sub_title_display}}
+                  <br><small class="text-muted">{{this.sub_title_display}}</small>
+                  {{/if}}
+                </td>
+                <td class="text-end pe-4">
+                  <button class="btn btn-sm btn-outline-success me-1" data-id="{{this.id}}"
+                    data-name="{{this.full_name}}" onclick="openSellModal(this)">
+                    💲 Продати
+                  </button>
+                  <button class="btn btn-sm btn-outline-primary me-1" data-id="{{this.id}}"
+                    data-name="{{this.full_name}}" data-email="{{this.email}}" data-phone="{{this.phone}}"
+                    onclick="openEditModal(this)">
+                    ✏️
+                  </button>
+                  <form action="/manager/reset-password" method="POST" class="d-inline"
+                    onsubmit="return confirm('Скинути пароль?')">
+                    <input type="hidden" name="client_id" value="{{this.id}}">
+                    <input type="hidden" name="client_email" value="{{this.email}}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Скинути пароль">🔑</button>
+                  </form>
+                </td>
+              </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="registerModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title">Реєстрація клієнта</h5>
+          <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form action="/manager/register" method="POST">
+            <div class="mb-3"><label>ПІБ</label><input type="text" name="full_name" class="form-control" required></div>
+            <div class="mb-3"><label>Email</label><input type="email" name="email" class="form-control" required></div>
+            <div class="mb-3"><label>Телефон</label><input type="text" name="phone" class="form-control" required></div>
+            <div class="mb-3"><label>Дата народження</label><input type="date" name="birth_date" class="form-control"
+                required></div>
+            <button type="submit" class="btn btn-success w-100">Зареєструвати</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="sellModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-dark-custom text-white">
+          <h5 class="modal-title">Продаж абонементу</h5>
+          <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Клієнт: <strong id="sellClientName"></strong></p>
+          <form action="/manager/sell" method="POST">
+            <input type="hidden" name="client_id" id="sellClientId">
+            <label class="form-label">Оберіть абонемент:</label>
+            <select name="price_id" class="form-select mb-3" required>
+              {{#each prices}}
+              <option value="{{this.id}}">{{this.title}} - {{this.cost}} грн</option>
+              {{/each}}
+            </select>
+            <button type="submit" class="btn btn-success w-100">Оформити</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title">Редагування</h5>
+          <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form action="/manager/edit-client" method="POST">
+            <input type="hidden" name="id" id="editId">
+
+            <div class="mb-2">
+              <label>ПІБ</label>
+              <input type="text" name="full_name" id="editName" class="form-control" required>
+            </div>
+
+            <div class="mb-2">
+              <label>Email (Логін)</label>
+              <input type="email" name="email" id="editEmail" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+              <label>Телефон</label>
+              <input type="text" name="phone" id="editPhone" class="form-control" required>
+            </div>
+
+            <button type="submit" class="btn btn-success w-100">Зберегти зміни</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {{> footer}}
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function openSellModal(btn) {
+      document.getElementById('sellClientId').value = btn.dataset.id;
+      document.getElementById('sellClientName').textContent = btn.dataset.name;
+      new bootstrap.Modal(document.getElementById('sellModal')).show();
+    }
+    function openEditModal(btn) {
+      document.getElementById('editId').value = btn.dataset.id;
+      document.getElementById('editName').value = btn.dataset.name;
+      document.getElementById('editEmail').value = btn.dataset.email;
+      document.getElementById('editPhone').value = btn.dataset.phone;
+      new bootstrap.Modal(document.getElementById('editModal')).show();
+    }
+  </script>
+</body>
+</html>

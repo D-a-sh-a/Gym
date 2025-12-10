@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Кабінет Клієнта</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+    {{> menu}}
+    <div class="container pb-5">
+        <div class="d-flex justify-content-center align-items-center mb-4">
+                <h2>Ваші заплановані тренування</h2>
+            </div>
+        <div id='calendar'></div>
+    </div>
+    <div class="modal fade" id="viewModal" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-dark-custom text-white">
+                    <h5 class="modal-title">Деталі</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Тренер:</strong> <span id="viewTrainer"></span></p>
+                    <p><strong>Послуга:</strong> <span id="viewService"></span></p>
+                    <p><strong>Час:</strong> <span id="viewTime"></span></p>
+                    <hr>
+                    <p class="text-muted small text-center">
+                        Щоб записатись на нове заняття або скасувати існуюче, будь ласка, зв'яжіться з менеджером або вашим тренером.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+{{> footer}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var myEvents = {{{eventsJson}}}; 
+
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'timeGridWeek',
+                locale: 'uk',
+                firstDay: 1,
+                buttonText: { today: 'Сьогодні', month: 'Місяць', week: 'Тиждень', day: 'День', list: 'Список' },
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'timeGridWeek,timeGridDay' },
+                slotMinTime: '08:00:00',
+                slotMaxTime: '22:00:00',
+                allDaySlot: false,
+                height: 'auto',
+                events: myEvents,
+                displayEventTime: false,
+                eventClick: function(info) {
+                    var props = info.event.extendedProps;
+                    document.getElementById('viewTrainer').textContent = props.trainer;
+                    document.getElementById('viewService').textContent = props.service;
+                    document.getElementById('viewTime').textContent = info.event.start.toLocaleString('uk-UA');
+                    
+                    var myModal = new bootstrap.Modal(document.getElementById('viewModal'));
+                    myModal.show();
+                }
+            });
+            calendar.render();
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

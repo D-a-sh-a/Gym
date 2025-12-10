@@ -1,0 +1,136 @@
+:root {
+    --main-green: #2ECC71;
+    --dark-green: #27AE60;
+    --graphite: #2D3436;
+    --light-accent: #A3E635;
+    --white: #FFFFFF;
+}
+
+body {
+    background-color: #f8f9fa;
+    color: var(--graphite);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.bg-dark-custom {
+    background-color: var(--graphite) !important;
+}
+
+.navbar-brand {
+    color: var(--main-green) !important;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.nav-link {
+    color: var(--white) !important;
+    transition: 0.3s;
+}
+
+.nav-link:hover {
+    color: var(--light-accent) !important;
+}
+
+.btn-primary-custom {
+    background-color: var(--main-green);
+    border: none;
+    color: var(--white);
+    padding: 10px 20px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary-custom:hover {
+    background-color: var(--dark-green);
+    color: var(--white);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(46, 204, 113, 0.4);
+}
+
+.btn-outline-custom {
+    border: 2px solid var(--main-green);
+    color: var(--main-green);
+    background: transparent;
+    font-weight: 600;
+}
+
+.btn-outline-custom:hover {
+    background-color: var(--main-green);
+    color: var(--white);
+}
+
+.hero-section {
+    background-color: var(--graphite);
+    color: var(--white);
+    border-radius: 15px;
+}
+
+.card {
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+    /* Щоб заголовок не вилазив */
+}
+
+.card-header-custom {
+    background-color: var(--main-green);
+    color: var(--white);
+    font-weight: bold;
+}
+
+.text-accent {
+    color: var(--main-green);
+}
+
+#calendar {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.fc-button-primary {
+    background-color: var(--main-green) !important;
+    border-color: var(--main-green) !important;
+    text-transform: capitalize;
+}
+
+.fc-button-primary:hover {
+    background-color: var(--dark-green) !important;
+}
+
+.fc-button-active {
+    background-color: var(--dark-green) !important;
+}
+
+.fc-day-today {
+    background-color: rgba(163, 230, 53, 0.15) !important;
+}
+
+.fc-event {
+    cursor: pointer;
+    border: none;
+    padding: 2px;
+    font-size: 0.9rem;
+}
+
+.fc-col-header-cell-cushion {
+    color: var(--graphite) !important;
+    text-decoration: none !important;
+    font-weight: bold;
+}
+
+.fc-col-header-cell-cushion:hover {
+    color: var(--main-green) !important;
+}
+
+.fc a {
+    color: var(--graphite);
+    text-decoration: none;
+}
+
+.alert-custom-green {
+    background-color: #d1e7dd;
+    color: #0f5132;
+    border: 1px solid #badbcc;
+}

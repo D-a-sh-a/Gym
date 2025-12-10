@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Панель Менеджера</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+</head>
+
+<body class="bg-light d-flex flex-column min-vh-100">
+  {{> menu}}
+  <div class="container pb-5">
+    <div class="row mb-4 align-items-center">
+      <div class="col-md-5">
+        <h2>Керування розкладом</h2>
+      </div>
+      <div class="col-md-7 d-flex gap-2 justify-content-end">
+        <form action="/manager/dashboard" method="GET" class="d-flex gap-2">
+          <select name="trainer_id" class="form-select" onchange="this.form.submit()">
+            <option value="">-- Всі тренери --</option>
+            {{#each trainersList}}
+            <option value="{{this.id}}">{{this.full_name}}</option>
+            {{/each}}
+          </select>
+        </form>
+        {{#if selectedTrainerId}}
+        <button class="btn btn-success shadow text-nowrap" data-bs-toggle="modal" data-bs-target="#addModal">
+          + Додати запис
+        </button>
+        {{/if}}
+      </div>
+    </div>
+    {{#if selectedTrainerId}}
+    <div id='calendar'></div>
+    {{else}}
+    <div class="alert alert-custom-green text-center shadow-sm">
+      Будь ласка, оберіть тренера зі списку вище, щоб побачити розклад. 👆
+    </div>
+    {{/if}}
+  </div>
+  <div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title">Створити запис</h5>
+          <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form action="/manager/add-booking" method="POST">
+            <input type="hidden" name="trainer_id" value="{{selectedTrainerId}}">
+            <div class="mb-3">
+              <label class="fw-bold">Клієнт</label>
+              <select name="client_id" class="form-select" required>
+                <option value="" disabled selected>Оберіть клієнта</option>
+                {{#each clientsList}}<option value="{{this.id}}">{{this.full_name}}</option>{{/each}}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="fw-bold">Послуга</label>
+              <select name="price_id" class="form-select" required>
+                {{#each pricesList}}<option value="{{this.id}}">{{this.title}}</option>{{/each}}
+              </select>
+            </div>
+            <div class="row mb-3">
+              <div class="col-6"><label class="fw-bold">Дата</label><input type="date" name="start_date"
+                  class="form-control" required></div>
+              <div class="col-6"><label class="fw-bold">Час</label>
+                <select name="start_time" class="form-select" required>
+                  <option>08:00</option>
+                  <option>09:00</option>
+                  <option>10:00</option>
+                  <option>11:00</option>
+                  <option>12:00</option>
+                  <option>13:00</option>
+                  <option>14:00</option>
+                  <option>15:00</option>
+                  <option>16:00</option>
+                  <option>17:00</option>
+                  <option>18:00</option>
+                  <option>19:00</option>
+                  <option>20:00</option>
+                  <option>21:00</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-success w-100">Зберегти</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title">Деталі тренування</h5>
+          <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p><strong>Клієнт:</strong> <span id="eClient"></span></p>
+          <p><strong>Послуга:</strong> <span id="eService"></span></p>
+          <hr>
+          <form action="/manager/edit-booking" method="POST" id="editForm">
+            <input type="hidden" name="booking_id" id="eId">
+            <label class="fw-bold mb-2">Змінити час/дату:</label>
+            <div class="row mb-4">
+              <div class="col-6">
+                <input type="date" name="new_date" id="eDate" class="form-control" required>
+              </div>
+              <div class="col-6">
+                <select name="new_time" id="eTime" class="form-select" required>
+                  <option>08:00</option>
+                  <option>09:00</option>
+                  <option>10:00</option>
+                  <option>11:00</option>
+                  <option>12:00</option>
+                  <option>13:00</option>
+                  <option>14:00</option>
+                  <option>15:00</option>
+                  <option>16:00</option>
+                  <option>17:00</option>
+                  <option>18:00</option>
+                  <option>19:00</option>
+                  <option>20:00</option>
+                  <option>21:00</option>
+                </select>
+              </div>
+            </div>
+            <div class="d-flex justify-content-between">
+              <button type="submit" class="btn btn-success">💾 Зберегти зміни</button>
+              <button type="submit" formaction="/manager/delete-booking" class="btn btn-danger"
+                onclick="return confirm('Видалити цей запис?')">🗑️ Видалити</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const selectedId = "{{selectedTrainerId}}";
+    if (selectedId) {
+      const selectEl = document.querySelector(`select[name="trainer_id"] option[value="${selectedId}"]`);
+      if (selectEl) selectEl.selected = true;
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+      var calendarEl = document.getElementById('calendar');
+      if (calendarEl) {
+        var myEvents = {{{ eventsJson }}};
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'timeGridWeek',
+      locale: 'uk',
+      firstDay: 1,
+      slotMinTime: '08:00:00',
+      slotMaxTime: '22:00:00',
+      allDaySlot: false,
+      height: 'auto',
+      displayEventTime: false,
+      buttonText: { today: 'Сьогодні', month: 'Місяць', week: 'Тиждень', day: 'День' },
+      headerToolbar: { left: 'prev,next today', center: 'title', right: 'timeGridWeek,timeGridDay' },
+      events: myEvents,
+      eventClick: function (info) {
+        var props = info.event.extendedProps;
+        document.getElementById('eClient').textContent = props.client;
+        document.getElementById('eService').textContent = props.service;
+        document.getElementById('eId').value = info.event.id;
+        document.getElementById('eDate').value = props.dateOnly;
+        document.getElementById('eTime').value = props.timeOnly;
+        new bootstrap.Modal(document.getElementById('editModal')).show();
+      }
+    });
+    calendar.render();
+            }
+        });
+  </script>
+  {{> footer}}
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
