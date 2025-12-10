@@ -147,7 +147,21 @@ exports.sellSubscription = async (req, res) => {
 exports.registerClient = async (req, res) => {
   const { full_name, email, phone, birth_date } = req.body;
   const connection = await db.getConnection();
-  try { await connection.beginTransaction(); const rawPassword = uuidv4().slice(0, 8); const hashedPassword = await bcrypt.hash(rawPassword, 10); const [uRes] = await connection.query("INSERT INTO users (login, password, role) VALUES (?, ?, 'client')", [email, hashedPassword]); await connection.query("INSERT INTO clients (id, full_name, phone, email, birth_date) VALUES (?, ?, ?, ?, ?)", [uRes.insertId, full_name, phone, email, birth_date]); await connection.commit(); mailer.sendMail(email, "Реєстрація в GYM", `Login: ${email}, Pass: ${rawPassword}`, "Змініть пароль в особистому кабінеті"); res.redirect('/manager/clients'); } catch (error) { await connection.rollback(); console.error(error); res.send("Помилка реєстрації."); } finally { connection.release(); }
+  try { await connection.beginTransaction();
+    const rawPassword = uuidv4().slice(0, 8);
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
+    const [uRes] = await connection.query("INSERT INTO users (login, password, role) VALUES (?, ?, 'client')", [email, hashedPassword]); 
+    await connection.query("INSERT INTO clients (id, full_name, phone, email, birth_date) VALUES (?, ?, ?, ?, ?)", [uRes.insertId, full_name, phone, email, birth_date]); 
+    await connection.commit(); 
+    mailer.sendMail(email, "Реєстрація в GYM", `<h2>Вітаємо!</h2>
+     <p>Ваш логін: <strong>${email}</strong></p>
+     <p>Ваш пароль: <strong>${rawPassword}</strong></p>
+     <hr>
+     <p style="color: red;">⚠️ Обов'язково змініть цей пароль в особистому кабінеті!</p>
+     <a href="http://localhost:3000/login">Увійти в кабінет</a>`); 
+    res.redirect('/manager/clients'); } 
+    catch (error) { await connection.rollback(); console.error(error); res.send("Помилка реєстрації."); } 
+    finally { connection.release(); }
 };
 exports.resetPassword = async (req, res) => { 
   try { 
@@ -155,7 +169,9 @@ exports.resetPassword = async (req, res) => {
     const newPass = uuidv4().slice(0, 8);
     const hashed = await bcrypt.hash(newPass, 10);
     await db.query("UPDATE users SET password = ? WHERE id = ?", [hashed, client_id]); 
-    mailer.sendMail(client_email, "Скидання пароля", `Pass: ${newPass}`, "Змініть пароль в особистому кабінеті"); res.redirect('/manager/clients'); } 
+    mailer.sendMail(client_email, "Скидання пароля", `<h3>Ваш пароль було скинуто</h3>
+     <p>Новий пароль: <strong>${newPass}</strong></p>
+     <p style="color: red;">⚠️ Будь ласка, змініть пароль в особистому кабінеті!</p>`); res.redirect('/manager/clients'); } 
     catch (e) { console.error(e); res.send("Error reset"); } };
 exports.updateClient = async (req, res) => { 
   try { 
