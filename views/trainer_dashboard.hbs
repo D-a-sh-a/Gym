@@ -18,8 +18,9 @@
         + Додати запис
       </button>
     </div>
-    <div id='calendar'></div>
+    <div id="calendar" data-events="{{eventsJson}}"></div>
   </div>
+
   <div class="modal fade" id="addModal" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -29,21 +30,23 @@
         </div>
         <div class="modal-body">
           <form action="/trainer/add-booking" method="POST">
-            <div class="mb-3">
-              <label class="form-label fw-bold">Клієнт</label>
-              <select name="client_id" class="form-select" required>
-                <option value="" selected disabled>Оберіть клієнта...</option>
-                {{#each clientsList}}
-                <option value="{{this.id}}">{{this.full_name}}</option>
-                {{/each}}
-              </select>
+            <div class="mb-3 position-relative">
+              <label class="form-label fw-bold">Клієнт (ПІБ або штрихкод)</label>
+              <input type="hidden" name="client_id" id="selectedClientId" required>
+              <input type="text" id="clientSearchInput" class="form-control" placeholder="Введіть ПІБ або штрихкод..."
+                autocomplete="off">
+              <div id="clientSearchResults" class="list-group position-absolute w-100 shadow-sm"
+                style="z-index: 1060; max-height: 220px; overflow-y: auto; display: none;"></div>
+              <small id="selectedClientBadge" class="text-success fw-bold d-none mt-1"></small>
             </div>
+
             <div class="mb-3">
               <label class="form-label fw-bold">Послуга</label>
               <input type="text" class="form-control" value="{{fixedService.title}}" disabled readonly
                 style="background-color: #e9ecef;">
               <input type="hidden" name="price_id" value="{{fixedService.id}}">
             </div>
+
             <div class="row mb-3">
               <div class="col-6">
                 <label class="form-label fw-bold">Дата</label>
@@ -79,6 +82,7 @@
       </div>
     </div>
   </div>
+
   <div class="modal fade" id="eventModal" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -87,83 +91,225 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <p><strong>Клієнт:</strong> <span id="modalClient"></span></p>
-          <p><strong>Послуга:</strong> <span id="modalService"></span></p>
-          <hr>
-          <form id="editForm" action="/trainer/edit-booking" method="POST">
-            <input type="hidden" name="booking_id" id="editId">
-            <div class="row mb-3">
-              <div class="col-6">
-                <label class="form-label fw-bold">Змінити дату:</label>
-                <input type="date" name="new_date" id="editDateOnly" class="form-control" required>
+          <p class="mb-1"><strong>Клієнт:</strong> <span id="modalClient"></span></p>
+          <p class="mb-1"><strong>Телефон:</strong> <span id="modalPhone"></span></p>
+          <p class="mb-1"><strong>Послуга:</strong> <span id="modalService"></span></p>
+          <p class="mb-1"><strong>Статус:</strong> <span id="modalStatusBadge" class="badge"></span></p>
+          <p class="mb-3"><strong>Оплата:</strong> <span id="modalPayBadge" class="badge"></span></p>
+
+          <div id="trainerManageBlock">
+            <hr>
+            <form id="editForm" action="/trainer/edit-booking" method="POST">
+              <input type="hidden" name="booking_id" id="editId">
+              <div class="row mb-3">
+                <div class="col-6">
+                  <label class="form-label fw-bold">Змінити дату:</label>
+                  <input type="date" name="new_date" id="editDateOnly" class="form-control" required>
+                </div>
+                <div class="col-6">
+                  <label class="form-label fw-bold">Змінити час:</label>
+                  <select name="new_time" id="editTimeSelect" class="form-select" required>
+                    <option value="08:00">08:00</option>
+                    <option value="09:00">09:00</option>
+                    <option value="10:00">10:00</option>
+                    <option value="11:00">11:00</option>
+                    <option value="12:00">12:00</option>
+                    <option value="13:00">13:00</option>
+                    <option value="14:00">14:00</option>
+                    <option value="15:00">15:00</option>
+                    <option value="16:00">16:00</option>
+                    <option value="17:00">17:00</option>
+                    <option value="18:00">18:00</option>
+                    <option value="19:00">19:00</option>
+                    <option value="20:00">20:00</option>
+                    <option value="21:00">21:00</option>
+                  </select>
+                </div>
               </div>
-              <div class="col-6">
-                <label class="form-label fw-bold">Змінити час:</label>
-                <select name="new_time" id="editTimeSelect" class="form-select" required>
-                  <option value="08:00">08:00</option>
-                  <option value="09:00">09:00</option>
-                  <option value="10:00">10:00</option>
-                  <option value="11:00">11:00</option>
-                  <option value="12:00">12:00</option>
-                  <option value="13:00">13:00</option>
-                  <option value="14:00">14:00</option>
-                  <option value="15:00">15:00</option>
-                  <option value="16:00">16:00</option>
-                  <option value="17:00">17:00</option>
-                  <option value="18:00">18:00</option>
-                  <option value="19:00">19:00</option>
-                  <option value="20:00">20:00</option>
-                  <option value="21:00">21:00</option>
-                </select>
-              </div>
-            </div>
-          </form>
-          <div class="d-flex justify-content-between mt-4 pt-2 border-top">
-            <button type="submit" form="editForm" class="btn btn-success px-4">💾 Зберегти</button>
-            <form action="/trainer/delete-booking" method="POST" class="m-0">
-              <input type="hidden" name="booking_id" id="deleteId">
-              <button type="submit" class="btn btn-danger px-4"
-                onclick="return confirm('Ви точно хочете видалити цей запис?')">🗑 Видалити</button>
             </form>
+            <div class="d-flex justify-content-between mt-4 pt-2 border-top">
+              <button type="submit" form="editForm" class="btn btn-success px-4">💾 Перенести</button>
+              <form action="/trainer/delete-booking" method="POST" class="m-0">
+                <input type="hidden" name="booking_id" id="deleteId">
+                <button type="submit" class="btn btn-danger px-4"
+                  onclick="return confirm('Скасувати запис? Якщо він оплачений, кошти повернуться на баланс клієнта.')">
+                  ❌ Скасувати
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-{{> footer}}
+
+  {{> footer}}
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       var calendarEl = document.getElementById('calendar');
-      var myEvents = {{{ eventsJson }}};
+      var myEvents = JSON.parse(calendarEl.dataset.events || '[]');
 
-    var calendar = new FullCalendar.Calendar(calendarEl, {
-      initialView: 'timeGridWeek',
-      locale: 'uk',
-      firstDay: 1,
-      buttonText: { today: 'Сьогодні', month: 'Місяць', week: 'Тиждень', day: 'День', list: 'Список' },
-      headerToolbar: { left: 'prev,next today', center: 'title', right: 'timeGridWeek,timeGridDay' },
-      slotMinTime: '08:00:00',
-      slotMaxTime: '22:00:00',
-      allDaySlot: false,
-      height: 'auto',
-      events: myEvents,
-      displayEventTime: false,
+      var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        businessHours: [
+          { daysOfWeek: [1, 2, 3, 4, 5], startTime: '08:00', endTime: '22:00' },
+          { daysOfWeek: [6], startTime: '09:00', endTime: '21:00' },
+          { daysOfWeek: [0], startTime: '10:00', endTime: '18:00' }
+        ],
+        locale: 'uk',
+        firstDay: 1,
+        buttonText: { today: 'Сьогодні', month: 'Місяць', week: 'Тиждень', day: 'День' },
+        headerToolbar: { left: 'prev,next today', center: 'title', right: 'timeGridWeek,timeGridDay' },
+        slotMinTime: '08:00:00',
+        slotMaxTime: '22:00:00',
+        allDaySlot: false,
+        height: 'auto',
+        events: myEvents,
+        displayEventTime: false,
 
-      eventClick: function (info) {
-        var props = info.event.extendedProps;
-        document.getElementById('modalClient').textContent = props.client;
-        document.getElementById('modalService').textContent = props.service;
-        document.getElementById('editId').value = info.event.id;
-        document.getElementById('deleteId').value = info.event.id;
-        document.getElementById('editDateOnly').value = props.dateOnly;
-        document.getElementById('editTimeSelect').value = props.timeOnly;
-        var myModal = new bootstrap.Modal(document.getElementById('eventModal'));
-        myModal.show();
+        eventClick: function (info) {
+          var props = info.event.extendedProps;
+          document.getElementById('modalClient').textContent = props.client;
+          document.getElementById('modalPhone').textContent = props.phone || '—';
+          document.getElementById('modalService').textContent = props.service;
+          document.getElementById('editId').value = info.event.id;
+          document.getElementById('deleteId').value = info.event.id;
+          document.getElementById('editDateOnly').value = props.dateOnly;
+          updateTimeOptionsByDate(document.getElementById('editDateOnly'), document.getElementById('editTimeSelect'));
+          document.getElementById('editTimeSelect').value = props.timeOnly;
+
+          const statusMap = {
+            scheduled: ['Заплановано', 'bg-primary'],
+            attended: ['Відвідано', 'bg-success'],
+            no_show: ['Неявка', 'bg-danger']
+          };
+          const st = statusMap[props.status] || [props.status, 'bg-secondary'];
+          const stBadge = document.getElementById('modalStatusBadge');
+          stBadge.textContent = st[0];
+          stBadge.className = 'badge ' + st[1];
+
+          const payMap = {
+            unpaid: ['Не оплачено', 'bg-warning text-dark'],
+            paid_online: ['Оплачено онлайн', 'bg-success'],
+            paid_from_balance: ['Оплачено з балансу', 'bg-success'],
+            paid_at_desk: ['Оплачено на рецепції', 'bg-success']
+          };
+          const pm = payMap[props.paymentStatus] || [props.paymentStatus, 'bg-secondary'];
+          const payBadge = document.getElementById('modalPayBadge');
+          payBadge.textContent = pm[0];
+          payBadge.className = 'badge ' + pm[1];
+
+          document.getElementById('trainerManageBlock').style.display = props.status === 'scheduled' ? 'block' : 'none';
+
+          new bootstrap.Modal(document.getElementById('eventModal')).show();
+        }
+      });
+      calendar.render();
+
+      const searchInput = document.getElementById('clientSearchInput');
+      const resultsBox = document.getElementById('clientSearchResults');
+      const hiddenClientId = document.getElementById('selectedClientId');
+      const selectedBadge = document.getElementById('selectedClientBadge');
+      let searchTimeout;
+
+      function selectClient(client) {
+        hiddenClientId.value = client.id;
+        searchInput.value = client.full_name;
+        selectedBadge.textContent = `✅ Обрано: ${client.full_name}`;
+        selectedBadge.classList.remove('d-none');
+        resultsBox.style.display = 'none';
+      }
+
+      searchInput.addEventListener('input', function () {
+        const q = this.value.trim();
+        hiddenClientId.value = '';
+        selectedBadge.classList.add('d-none');
+        clearTimeout(searchTimeout);
+
+        if (q.length < 2) {
+          resultsBox.style.display = 'none';
+          return;
+        }
+
+        searchTimeout = setTimeout(async () => {
+          try {
+            const res = await fetch(`/api/trainer/clients/search?q=${encodeURIComponent(q)}`);
+            const clients = await res.json();
+
+            if (clients.length === 1 && clients[0].barcode === q) {
+              selectClient(clients[0]);
+              return;
+            }
+
+            resultsBox.innerHTML = '';
+            if (clients.length === 0) {
+              resultsBox.innerHTML = '<div class="list-group-item text-muted small">Клієнтів не знайдено</div>';
+            } else {
+              clients.forEach(c => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'list-group-item list-group-item-action py-2';
+                item.innerHTML = `<strong>${c.full_name}</strong><br><small class="text-muted">${c.phone || 'без телефону'}</small>`;
+                item.onclick = () => selectClient(c);
+                resultsBox.appendChild(item);
+              });
+            }
+            resultsBox.style.display = 'block';
+          } catch (err) {
+            console.error('Помилка пошуку клієнта:', err);
+          }
+        }, 250);
+      });
+
+      document.querySelector('#addModal form').addEventListener('submit', function (e) {
+        if (!hiddenClientId.value) {
+          e.preventDefault();
+          alert('Будь ласка, оберіть клієнта зі списку пошуку!');
+          searchInput.focus();
+        }
+      });
+
+      document.getElementById('addModal').addEventListener('hidden.bs.modal', () => {
+        searchInput.value = '';
+        hiddenClientId.value = '';
+        selectedBadge.classList.add('d-none');
+        resultsBox.style.display = 'none';
+      });
+      function updateTimeOptionsByDate(dateInput, timeSelect) {
+        if (!dateInput.value) return;
+        const day = new Date(`${dateInput.value}T12:00:00`).getDay();
+
+        let startHour = 8, endHour = 21;
+        if (day === 6) { startHour = 9; endHour = 20; }
+        if (day === 0) { startHour = 10; endHour = 17; }
+
+        const currentVal = timeSelect.value;
+        timeSelect.innerHTML = '';
+
+        for (let h = startHour; h <= endHour; h++) {
+          const timeStr = `${String(h).padStart(2, '0')}:00`;
+          const opt = document.createElement('option');
+          opt.value = timeStr;
+          opt.textContent = timeStr;
+          if (timeStr === currentVal) opt.selected = true;
+          timeSelect.appendChild(opt);
+        }
+      }
+
+      const addDateInput = document.querySelector('#addModal input[name="start_date"]');
+      const addTimeSelect = document.querySelector('#addModal select[name="start_time"]');
+      if (addDateInput && addTimeSelect) {
+        addDateInput.addEventListener('change', () => updateTimeOptionsByDate(addDateInput, addTimeSelect));
+      }
+
+      const editDateInput = document.getElementById('editDateOnly');
+      const editTimeSelect = document.getElementById('editTimeSelect');
+      if (editDateInput && editTimeSelect) {
+        editDateInput.addEventListener('change', () => updateTimeOptionsByDate(editDateInput, editTimeSelect));
       }
     });
-    calendar.render();
-        });
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>

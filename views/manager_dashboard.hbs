@@ -17,14 +17,12 @@
         <h2>Керування розкладом</h2>
       </div>
       <div class="col-md-7 d-flex gap-2 justify-content-end">
-        <form action="/manager/dashboard" method="GET" class="d-flex gap-2">
-          <select name="trainer_id" class="form-select" onchange="this.form.submit()">
-            <option value="">-- Всі тренери --</option>
-            {{#each trainersList}}
-            <option value="{{this.id}}">{{this.full_name}}</option>
-            {{/each}}
-          </select>
-        </form>
+        <div class="position-relative" style="min-width: 260px;">
+          <input type="text" id="trainerSearchInput" class="form-control" value="{{selectedTrainerName}}"
+            placeholder="🔍 Пошук тренера за ПІБ..." autocomplete="off">
+          <div id="trainerSearchResults" class="list-group position-absolute w-100 shadow-sm"
+            style="z-index: 1060; max-height: 220px; overflow-y: auto; display: none;"></div>
+        </div>
         {{#if selectedTrainerId}}
         <button class="btn btn-success shadow text-nowrap" data-bs-toggle="modal" data-bs-target="#addModal">
           + Додати запис
@@ -33,8 +31,7 @@
       </div>
     </div>
     {{#if selectedTrainerId}}
-    <div id='calendar'></div>
-    {{else}}
+    <div id="calendar" data-events="{{eventsJson}}"></div> {{else}}
     <div class="alert alert-custom-green text-center shadow-sm">
       Будь ласка, оберіть тренера зі списку вище, щоб побачити розклад. 👆
     </div>
@@ -50,12 +47,14 @@
         <div class="modal-body">
           <form action="/manager/add-booking" method="POST">
             <input type="hidden" name="trainer_id" value="{{selectedTrainerId}}">
-            <div class="mb-3">
-              <label class="fw-bold">Клієнт</label>
-              <select name="client_id" class="form-select" required>
-                <option value="" disabled selected>Оберіть клієнта</option>
-                {{#each clientsList}}<option value="{{this.id}}">{{this.full_name}}</option>{{/each}}
-              </select>
+            <div class="mb-3 position-relative">
+              <label class="fw-bold">Клієнт (ПІБ або штрихкод)</label>
+              <input type="hidden" name="client_id" id="selectedClientId" required>
+              <input type="text" id="clientSearchInput" class="form-control"
+                placeholder="Введіть ПІБ або відскануйте штрихкод..." autocomplete="off">
+              <div id="clientSearchResults" class="list-group position-absolute w-100 shadow-sm"
+                style="z-index: 1060; max-height: 220px; overflow-y: auto; display: none;"></div>
+              <small id="selectedClientBadge" class="text-success fw-bold d-none mt-1"></small>
             </div>
             <div class="mb-3">
               <label class="fw-bold">Послуга</label>
@@ -99,82 +98,304 @@
           <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <p><strong>Клієнт:</strong> <span id="eClient"></span></p>
-          <p><strong>Послуга:</strong> <span id="eService"></span></p>
-          <hr>
-          <form action="/manager/edit-booking" method="POST" id="editForm">
-            <input type="hidden" name="booking_id" id="eId">
-            <label class="fw-bold mb-2">Змінити час/дату:</label>
-            <div class="row mb-4">
-              <div class="col-6">
-                <input type="date" name="new_date" id="eDate" class="form-control" required>
-              </div>
-              <div class="col-6">
-                <select name="new_time" id="eTime" class="form-select" required>
-                  <option>08:00</option>
-                  <option>09:00</option>
-                  <option>10:00</option>
-                  <option>11:00</option>
-                  <option>12:00</option>
-                  <option>13:00</option>
-                  <option>14:00</option>
-                  <option>15:00</option>
-                  <option>16:00</option>
-                  <option>17:00</option>
-                  <option>18:00</option>
-                  <option>19:00</option>
-                  <option>20:00</option>
-                  <option>21:00</option>
+          <p class="mb-1"><strong>Клієнт:</strong> <span id="eClient"></span></p>
+          <p class="mb-1"><strong>Послуга:</strong> <span id="eService"></span> (<span id="eCost"></span> грн)</p>
+          <p class="mb-1"><strong>Статус:</strong> <span id="eStatusBadge" class="badge"></span></p>
+          <p class="mb-3"><strong>Оплата:</strong> <span id="ePayBadge" class="badge"></span></p>
+
+          <div id="attendSection" class="p-3 bg-light border rounded mb-3">
+            <form action="/manager/attend-booking" method="POST">
+              <input type="hidden" name="booking_id" id="aId">
+              <input type="hidden" name="trainer_id" value="{{selectedTrainerId}}">
+
+              <div id="paymentSelectBlock" class="mb-3">
+                <label class="fw-bold text-danger mb-1">⚠️ Тренування не оплачене! Оберіть оплату:</label>
+                <select name="payment_method" id="ePaymentMethod" class="form-select">
+                  <option value="cash">💵 Готівка</option>
+                  <option value="card">💳 Картка (Термінал)</option>
+                  <option value="balance" id="optBalance">💰 Списати з балансу</option>
                 </select>
+                <small class="text-muted">Баланс клієнта: <strong id="eBalance">0</strong> грн</small>
               </div>
-            </div>
-            <div class="d-flex justify-content-between">
-              <button type="submit" class="btn btn-success">💾 Зберегти зміни</button>
-              <button type="submit" formaction="/manager/delete-booking" class="btn btn-danger"
-                onclick="return confirm('Видалити цей запис?')">🗑️ Видалити</button>
-            </div>
-          </form>
+
+              <button type="submit" class="btn btn-success w-100 fw-bold">
+                ✅ Відмітити візит
+              </button>
+            </form>
+          </div>
+
+          <div id="editSection">
+            <hr>
+            <form action="/manager/edit-booking" method="POST" id="editForm">
+              <input type="hidden" name="booking_id" id="eId">
+              <input type="hidden" name="trainer_id" value="{{selectedTrainerId}}">
+              <label class="fw-bold mb-2">Перенести дату / час:</label>
+              <div class="row mb-3">
+                <div class="col-6">
+                  <input type="date" name="new_date" id="eDate" class="form-control" required>
+                </div>
+                <div class="col-6">
+                  <select name="new_time" id="eTime" class="form-select" required>
+                    <option>08:00</option>
+                    <option>09:00</option>
+                    <option>10:00</option>
+                    <option>11:00</option>
+                    <option>12:00</option>
+                    <option>13:00</option>
+                    <option>14:00</option>
+                    <option>15:00</option>
+                    <option>16:00</option>
+                    <option>17:00</option>
+                    <option>18:00</option>
+                    <option>19:00</option>
+                    <option>20:00</option>
+                    <option>21:00</option>
+                  </select>
+                </div>
+              </div>
+              <div class="d-flex justify-content-between">
+                <button type="submit" class="btn btn-outline-success">💾 Перенести</button>
+                <button type="submit" formaction="/manager/cancel-booking" class="btn btn-danger"
+                  onclick="return confirm('Скасувати запис? Якщо він оплачений, кошти повернуться на баланс клієнта.')">
+                  ❌ Скасувати запис
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
   </div>
+
   <script>
+
+    const trInput = document.getElementById('trainerSearchInput');
+    const trResults = document.getElementById('trainerSearchResults');
+    let trTimeout;
+
+    async function loadTrainers(q) {
+      const res = await fetch(`/api/manager/trainers/search?q=${encodeURIComponent(q)}`);
+      const trainers = await res.json();
+      trResults.innerHTML = '';
+      if (trainers.length === 0) {
+        trResults.innerHTML = '<div class="list-group-item text-muted small">Тренерів не знайдено</div>';
+      } else {
+        trainers.forEach(t => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'list-group-item list-group-item-action py-2';
+          btn.textContent = t.full_name;
+          btn.onclick = () => window.location.href = `/manager/dashboard?trainer_id=${t.id}`;
+          trResults.appendChild(btn);
+        });
+      }
+      trResults.style.display = 'block';
+    }
+
+    if (trInput) {
+      trInput.addEventListener('focus', () => loadTrainers(trInput.value.trim()));
+      trInput.addEventListener('input', () => {
+        clearTimeout(trTimeout);
+        trTimeout = setTimeout(() => loadTrainers(trInput.value.trim()), 200);
+      });
+      document.addEventListener('click', (e) => {
+        if (!trInput.contains(e.target) && !trResults.contains(e.target)) {
+          trResults.style.display = 'none';
+        }
+      });
+    }
+
     const selectedId = "{{selectedTrainerId}}";
     if (selectedId) {
       const selectEl = document.querySelector(`select[name="trainer_id"] option[value="${selectedId}"]`);
       if (selectEl) selectEl.selected = true;
     }
+
     document.addEventListener('DOMContentLoaded', function () {
       var calendarEl = document.getElementById('calendar');
       if (calendarEl) {
-        var myEvents = {{{ eventsJson }}};
-    var calendar = new FullCalendar.Calendar(calendarEl, {
-      initialView: 'timeGridWeek',
-      locale: 'uk',
-      firstDay: 1,
-      slotMinTime: '08:00:00',
-      slotMaxTime: '22:00:00',
-      allDaySlot: false,
-      height: 'auto',
-      displayEventTime: false,
-      buttonText: { today: 'Сьогодні', month: 'Місяць', week: 'Тиждень', day: 'День' },
-      headerToolbar: { left: 'prev,next today', center: 'title', right: 'timeGridWeek,timeGridDay' },
-      events: myEvents,
-      eventClick: function (info) {
-        var props = info.event.extendedProps;
-        document.getElementById('eClient').textContent = props.client;
-        document.getElementById('eService').textContent = props.service;
-        document.getElementById('eId').value = info.event.id;
-        document.getElementById('eDate').value = props.dateOnly;
-        document.getElementById('eTime').value = props.timeOnly;
-        new bootstrap.Modal(document.getElementById('editModal')).show();
+        var myEvents = JSON.parse(calendarEl.dataset.events || '[]');;
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: 'timeGridWeek',
+          businessHours: [
+            { daysOfWeek: [1, 2, 3, 4, 5], startTime: '08:00', endTime: '22:00' },
+            { daysOfWeek: [6], startTime: '09:00', endTime: '21:00' },
+            { daysOfWeek: [0], startTime: '10:00', endTime: '18:00' }
+          ],
+          locale: 'uk',
+          firstDay: 1,
+          slotMinTime: '08:00:00',
+          slotMaxTime: '22:00:00',
+          allDaySlot: false,
+          height: 'auto',
+          displayEventTime: false,
+          buttonText: { today: 'Сьогодні', month: 'Місяць', week: 'Тиждень', day: 'День' },
+          headerToolbar: { left: 'prev,next today', center: 'title', right: 'timeGridWeek,timeGridDay' },
+          events: myEvents,
+          eventClick: function (info) {
+            var props = info.event.extendedProps;
+
+            document.getElementById('eClient').textContent = props.client;
+            document.getElementById('eService').textContent = props.service;
+            document.getElementById('eCost').textContent = props.cost;
+            document.getElementById('eId').value = info.event.id;
+            document.getElementById('aId').value = info.event.id;
+            document.getElementById('eDate').value = props.dateOnly;
+            updateTimeOptionsByDate(document.getElementById('eDate'), document.getElementById('eTime'));
+            document.getElementById('eTime').value = props.timeOnly;
+
+            const statusMap = {
+              scheduled: ['Заплановано', 'bg-primary'],
+              attended: ['Відвідано', 'bg-success'],
+              no_show: ['Неявка', 'bg-danger']
+            };
+            const st = statusMap[props.status] || [props.status, 'bg-secondary'];
+            const stBadge = document.getElementById('eStatusBadge');
+            stBadge.textContent = st[0];
+            stBadge.className = 'badge ' + st[1];
+
+            const payMap = {
+              unpaid: ['Не оплачено', 'bg-warning text-dark'],
+              paid_online: ['Оплачено онлайн', 'bg-success'],
+              paid_from_balance: ['Оплачено з балансу', 'bg-success'],
+              paid_at_desk: ['Оплачено на рецепції', 'bg-success']
+            };
+            const pm = payMap[props.paymentStatus] || [props.paymentStatus, 'bg-secondary'];
+            const payBadge = document.getElementById('ePayBadge');
+            payBadge.textContent = pm[0];
+            payBadge.className = 'badge ' + pm[1];
+
+            const isScheduled = props.status === 'scheduled';
+            document.getElementById('attendSection').style.display = isScheduled ? 'block' : 'none';
+            document.getElementById('editSection').style.display = isScheduled ? 'block' : 'none';
+
+            const payBlock = document.getElementById('paymentSelectBlock');
+            if (isScheduled && props.paymentStatus === 'unpaid') {
+              payBlock.style.display = 'block';
+              document.getElementById('eBalance').textContent = props.depositBalance;
+              const optBalance = document.getElementById('optBalance');
+              optBalance.disabled = props.depositBalance < props.cost;
+              optBalance.textContent = props.depositBalance >= props.cost
+                ? `💰 Списати з балансу (${props.depositBalance} грн)`
+                : `💰 Недостатньо на балансі (${props.depositBalance} грн)`;
+              document.getElementById('ePaymentMethod').value = 'cash';
+            } else {
+              payBlock.style.display = 'none';
+            }
+
+            new bootstrap.Modal(document.getElementById('editModal')).show();
+          }
+        });
+        calendar.render();
+      }
+
+      const searchInput = document.getElementById('clientSearchInput');
+      const resultsBox = document.getElementById('clientSearchResults');
+      const hiddenClientId = document.getElementById('selectedClientId');
+      const selectedBadge = document.getElementById('selectedClientBadge');
+      let searchTimeout;
+
+      function selectClient(client) {
+        hiddenClientId.value = client.id;
+        searchInput.value = client.full_name;
+        selectedBadge.textContent = `✅ Обрано: ${client.full_name} (${client.barcode || 'без штрихкоду'})`;
+        selectedBadge.classList.remove('d-none');
+        resultsBox.style.display = 'none';
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener('input', function () {
+          const q = this.value.trim();
+          hiddenClientId.value = '';
+          selectedBadge.classList.add('d-none');
+          clearTimeout(searchTimeout);
+
+          if (q.length < 2) {
+            resultsBox.style.display = 'none';
+            return;
+          }
+
+          searchTimeout = setTimeout(async () => {
+            try {
+              const res = await fetch(`/api/manager/clients/search?q=${encodeURIComponent(q)}`);
+              const clients = await res.json();
+
+              if (clients.length === 1 && clients[0].barcode === q) {
+                selectClient(clients[0]);
+                return;
+              }
+
+              resultsBox.innerHTML = '';
+              if (clients.length === 0) {
+                resultsBox.innerHTML = '<div class="list-group-item text-muted small">Клієнтів не знайдено</div>';
+              } else {
+                clients.forEach(c => {
+                  const item = document.createElement('button');
+                  item.type = 'button';
+                  item.className = 'list-group-item list-group-item-action py-2';
+                  item.innerHTML = `<strong>${c.full_name}</strong><br><small class="text-muted">Штрихкод: ${c.barcode || '—'} | ${c.phone || ''}</small>`;
+                  item.onclick = () => selectClient(c);
+                  resultsBox.appendChild(item);
+                });
+              }
+              resultsBox.style.display = 'block';
+            } catch (err) {
+              console.error('Помилка пошуку клієнта:', err);
+            }
+          }, 250);
+        });
+
+        document.querySelector('#addModal form').addEventListener('submit', function (e) {
+          if (!hiddenClientId.value) {
+            e.preventDefault();
+            alert('Будь ласка, оберіть клієнта зі списку пошуку!');
+            searchInput.focus();
+          }
+        });
+
+        document.getElementById('addModal').addEventListener('hidden.bs.modal', () => {
+          searchInput.value = '';
+          hiddenClientId.value = '';
+          selectedBadge.classList.add('d-none');
+          resultsBox.style.display = 'none';
+        });
+      }
+      function updateTimeOptionsByDate(dateInput, timeSelect) {
+        if (!dateInput.value) return;
+        const day = new Date(`${dateInput.value}T12:00:00`).getDay();
+
+        let startHour = 8, endHour = 21;
+        if (day === 6) { startHour = 9; endHour = 20; } 
+        if (day === 0) { startHour = 10; endHour = 17; }
+
+        const currentVal = timeSelect.value;
+        timeSelect.innerHTML = '';
+
+        for (let h = startHour; h <= endHour; h++) {
+          const timeStr = `${String(h).padStart(2, '0')}:00`;
+          const opt = document.createElement('option');
+          opt.value = timeStr;
+          opt.textContent = timeStr;
+          if (timeStr === currentVal) opt.selected = true;
+          timeSelect.appendChild(opt);
+        }
+      }
+
+      const addDateInput = document.querySelector('#addModal input[name="start_date"]');
+      const addTimeSelect = document.querySelector('#addModal select[name="start_time"]');
+      if (addDateInput && addTimeSelect) {
+        addDateInput.addEventListener('change', () => updateTimeOptionsByDate(addDateInput, addTimeSelect));
+      }
+
+      const editDateInput = document.getElementById('eDate');
+      const editTimeSelect = document.getElementById('eTime');
+      if (editDateInput && editTimeSelect) {
+        editDateInput.addEventListener('change', () => updateTimeOptionsByDate(editDateInput, editTimeSelect));
       }
     });
-    calendar.render();
-            }
-        });
   </script>
   {{> footer}}
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>

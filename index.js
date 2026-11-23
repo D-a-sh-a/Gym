@@ -7,12 +7,14 @@ const app = express();
 hbs.registerPartials(path.join(__dirname, 'views/partials'));
 const db = require('./database/db');
 const session = require('express-session');
+const syncController = require('./controllers/syncController');
 const authController = require('./controllers/authController');
 const trainerController = require('./controllers/trainerController');
 const clientController = require('./controllers/clientController');
 const managerController = require('./controllers/managerController');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
+const { initCronJobs } = require('./utils/cronJobs');
 
 hbs.registerHelper('isManager', (user) => user && user.role === 'manager');
 hbs.registerHelper('isTrainer', (user) => user && user.role === 'trainer');
@@ -35,8 +37,13 @@ app.set('views', path.join(__dirname, 'views'));
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false, limit: '50mb' }));
+app.use(bodyParser.json({ limit: '50mb' }));
+
+app.post('/api/sync/trainers', syncController.syncTrainersFromBAS);
+app.post('/api/sync/price', syncController.syncPriceFromBAS);
+app.post('/api/sync/schedules', syncController.syncSchedulesFromBAS);
+app.post('/api/sync/managers', syncController.syncManagers);
 
 app.get('/', (req, res) => {
     res.render('index', { title: 'GYM - Головна', user: req.session.user });
@@ -80,7 +87,8 @@ app.get('/trainer/image/:id', async (req, res) => {
 
 app.get('/price', async (req, res) => {
     try {
-        const [prices] = await db.query('SELECT * FROM price_list');
+        const [prices] = await db.query('SELECT * FROM price_list ORDER BY cost ASC');
+        
         res.render('price', { 
             title: 'Прайс-лист', 
             priceList: prices,
@@ -111,6 +119,10 @@ app.post('/trainer/edit-booking', (req, res) => {
     if (!req.session.user || req.session.user.role !== 'trainer') return res.redirect('/login');
     trainerController.updateBooking(req, res, db);
 });
+app.get('/api/trainer/clients/search', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'trainer') return res.status(403).json([]);
+    trainerController.searchClientsApi(req, res, db);
+});
 
 //клієнти
 app.get('/client/dashboard', (req, res) => {
@@ -124,6 +136,26 @@ app.get('/client/profile', (req, res) => {
 app.post('/client/change-password', (req, res) => {
     if (!req.session.user || req.session.user.role !== 'client') return res.redirect('/login');
     clientController.changePassword(req, res, db);
+});
+app.post('/client/buy', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'client') return res.redirect('/login');
+    clientController.buySubscription(req, res, db);
+});
+app.get('/api/client/available-slots', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'client') return res.status(403).json([]);
+    clientController.getAvailableSlots(req, res, db);
+});
+app.post('/client/add-booking', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'client') return res.redirect('/login');
+    clientController.addBooking(req, res, db);
+});
+app.post('/client/edit-booking', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'client') return res.redirect('/login');
+    clientController.updateBooking(req, res, db);
+});
+app.post('/client/cancel-booking', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'client') return res.redirect('/login');
+    clientController.cancelBooking(req, res, db);
 });
 
 //менеджери
@@ -139,10 +171,21 @@ app.post('/manager/add-booking', (req, res) => {
     if (!req.session.user || req.session.user.role !== 'manager') return res.redirect('/login');
     managerController.addBooking(req, res);
 });
-app.post('/manager/delete-booking', (req, res) => {
+app.post('/manager/attend-booking', (req, res) => {
     if (!req.session.user || req.session.user.role !== 'manager') return res.redirect('/login');
-    managerController.deleteBooking(req, res);
+    managerController.attendBooking(req, res);
 });
+
+app.post('/manager/cancel-booking', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'manager') return res.redirect('/login');
+    managerController.cancelBooking(req, res);
+});
+
+app.get('/api/manager/clients/search', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'manager') return res.status(403).json([]);
+    managerController.searchClientsApi(req, res);
+});
+
 app.post('/manager/edit-booking', (req, res) => {
     if (!req.session.user || req.session.user.role !== 'manager') return res.redirect('/login');
     managerController.updateBooking(req, res);
@@ -168,22 +211,28 @@ app.get('/manager/trainers', (req, res) => {
     managerController.getTrainersPage(req, res);
 });
 
-app.post('/manager/trainers/add', upload.single('photo'), (req, res) => {
-    if (!req.session.user || req.session.user.role !== 'manager') return res.redirect('/login');
-    managerController.createTrainer(req, res);
-});
-
 app.post('/manager/trainers/edit', upload.single('photo'), (req, res) => {
     if (!req.session.user || req.session.user.role !== 'manager') return res.redirect('/login');
     managerController.updateTrainer(req, res);
 });
+app.get('/api/manager/trainers/search', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'manager') return res.status(403).json([]);
+    managerController.searchTrainersApi(req, res);
+});
 
-app.post('/manager/trainers/delete', (req, res) => {
+app.post('/manager/register-visit', (req, res) => {
     if (!req.session.user || req.session.user.role !== 'manager') return res.redirect('/login');
-    managerController.deleteTrainer(req, res);
+    managerController.registerVisit(req, res);
+});
+app.post('/manager/topup-balance', (req, res) => {
+  if (!req.session.user || req.session.user.role !== 'manager') return res.redirect('/login');
+  managerController.topupBalance(req, res);
 });
 
-const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`Сервер запущено на http://localhost:${PORT}`);
+app.get('/manager/reports', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'manager') return res.redirect('/login');
+    managerController.getReportsPage(req, res);
 });
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));

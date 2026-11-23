@@ -10,24 +10,44 @@
 <body class="bg-light d-flex flex-column min-vh-100">
   {{> menu}}
   <div class="container mt-4">
+
     <div class="row mb-4 align-items-center">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <h2>База клієнтів</h2>
       </div>
-      <div class="col-md-5">
-        <form action="/manager/clients" method="GET" class="d-flex">
-          <input type="text" name="search" class="form-control me-2" placeholder="Пошук..." value="{{searchQuery}}">
-          <button type="submit" class="btn btn-outline-success">🔍</button>
-          {{#if searchQuery}}<a href="/manager/clients" class="btn btn-outline-secondary ms-1">❌</a>{{/if}}
+
+      <div class="col-md-3">
+        <form action="/manager/clients" method="GET">
+          <div class="input-group shadow-sm">
+            <span class="input-group-text bg-white border-success">📳</span>
+            <input type="text" name="barcode" class="form-control border-success" placeholder="Скан штрихкоду..."
+              value="{{barcodeQuery}}" autofocus autocomplete="off">
+          </div>
         </form>
       </div>
-      <div class="col-md-3 text-end">
-        <button class="btn btn-success shadow" data-bs-toggle="modal" data-bs-target="#registerModal">+ Новий
-          клієнт</button>
+
+      <div class="col-md-4">
+        <form action="/manager/clients" method="GET" class="d-flex shadow-sm">
+          <input type="text" name="search" class="form-control me-1" placeholder="ПІБ, телефон, email..."
+            value="{{searchQuery}}">
+          <button type="submit" class="btn btn-dark">🔍</button>
+          {{#if hasSearched}}
+          <a href="/manager/clients" class="btn btn-outline-danger ms-1" title="Скинути пошук">✖</a>
+          {{/if}}
+        </form>
+      </div>
+
+      <div class="col-md-2 text-end">
+        <button class="btn btn-success shadow w-100" data-bs-toggle="modal" data-bs-target="#registerModal">+
+          Новий</button>
       </div>
     </div>
-    <div class="card shadow-sm border-0">
+
+    <div class="card shadow-sm border-0 mb-5">
       <div class="card-body p-0">
+
+        {{#if hasSearched}}
+        {{#if clients.length}}
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
             <thead class="table-dark">
@@ -41,7 +61,17 @@
             <tbody>
               {{#each clients}}
               <tr>
-                <td class="ps-4 fw-bold">{{this.full_name}}</td>
+                <td class="ps-4 fw-bold">
+                  {{this.full_name}}
+                  <br><small class="text-muted fw-normal">Код: {{this.barcode}}</small>
+                  <div class="mt-1">
+                    {{#if this.is_debt}}
+                    <span class="badge bg-danger">⚠️ Борг: {{this.deposit_balance}} грн</span>
+                    {{else}}
+                    <span class="badge bg-info text-dark">💰 Баланс: {{this.deposit_balance}} грн</span>
+                    {{/if}}
+                  </div>
+                </td>
                 <td>
                   <div>📧 {{this.email}}</div>
                   <div class="small text-muted">📱 {{this.phone}}</div>
@@ -55,30 +85,125 @@
                   {{/if}}
                 </td>
                 <td class="text-end pe-4">
-                  <button class="btn btn-sm btn-outline-success me-1" data-id="{{this.id}}"
-                    data-name="{{this.full_name}}" onclick="openSellModal(this)">
-                    💲 Продати
-                  </button>
-                  <button class="btn btn-sm btn-outline-primary me-1" data-id="{{this.id}}"
-                    data-name="{{this.full_name}}" data-email="{{this.email}}" data-phone="{{this.phone}}"
-                    onclick="openEditModal(this)">
-                    ✏️
-                  </button>
-                  <form action="/manager/reset-password" method="POST" class="d-inline"
-                    onsubmit="return confirm('Скинути пароль?')">
-                    <input type="hidden" name="client_id" value="{{this.id}}">
-                    <input type="hidden" name="client_email" value="{{this.email}}">
-                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Скинути пароль">🔑</button>
-                  </form>
+                  <div class="d-flex flex-wrap justify-content-end gap-1">
+                    {{#unless this.today_bookings.length}}
+                      {{#if this.subscription_status.is_active}}
+                      <form action="/manager/register-visit" method="POST" class="m-0">
+                        <input type="hidden" name="client_id" value="{{this.id}}">
+                        <input type="hidden" name="return_url"
+                          value="/manager/clients?{{#if ../barcodeQuery}}barcode={{../barcodeQuery}}{{else}}search={{../searchQuery}}{{/if}}">
+                        <button type="submit" class="btn btn-sm btn-success fw-bold shadow-sm text-nowrap">
+                          ✔️ Візит
+                        </button>
+                      </form>
+                      {{else}}
+                      <button class="btn btn-sm btn-secondary disabled text-nowrap" title="Немає абонемента">
+                        ❌ Немає аб.
+                      </button>
+                      {{/if}}
+                    {{/unless}}
+
+                    <button class="btn btn-sm btn-outline-warning text-dark text-nowrap" data-id="{{this.id}}"
+                      data-name="{{this.full_name}}" data-return-url="/manager/clients?barcode={{this.barcode}}"
+                      onclick="openClientBookingModal(this)">
+                      🏋️ Записати
+                    </button>
+
+                    <button class="btn btn-sm btn-outline-success text-nowrap" data-id="{{this.id}}"
+                      data-name="{{this.full_name}}" data-has-purchase="{{this.has_any_purchase}}"
+                      data-discount="{{this.discount_amount}}" onclick="openSellModal(this)">
+                      💲 Продати
+                    </button>
+
+                    <button class="btn btn-sm {{#if this.is_debt}}btn-danger{{else}}btn-outline-info text-dark{{/if}} text-nowrap"
+                      data-id="{{this.id}}" data-name="{{this.full_name}}" data-balance="{{this.deposit_balance}}"
+                      data-return-url="/manager/clients?barcode={{this.barcode}}" onclick="openTopupModal(this)">
+                      {{#if this.is_debt}}💳 Борг{{else}}💰 Баланс{{/if}}
+                    </button>
+
+                    <button class="btn btn-sm btn-outline-primary" data-id="{{this.id}}"
+                      data-name="{{this.full_name}}" data-email="{{this.email}}" data-phone="{{this.phone}}"
+                      onclick="openEditModal(this)" title="Редагувати">✏️</button>
+
+                    <form action="/manager/reset-password" method="POST" class="m-0"
+                      onsubmit="return confirm('Скинути пароль?')">
+                      <input type="hidden" name="client_id" value="{{this.id}}">
+                      <input type="hidden" name="client_email" value="{{this.email}}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Скинути пароль">🔑</button>
+                    </form>
+                  </div>
                 </td>
               </tr>
+
+              {{#if this.today_bookings.length}}
+              <tr class="table-warning">
+                <td colspan="4" class="px-4 py-3">
+                  <h6 class="fw-bold text-dark mb-2">🏋️ Запис на персональне тренування сьогодні:</h6>
+                  {{#each this.today_bookings}}
+                  <div
+                    class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 pb-2 border-bottom border-warning-subtle rounded p-2"
+                    style="cursor: pointer;" title="Натисніть, щоб перенести або скасувати" data-id="{{this.id}}"
+                    data-trainer-id="{{this.trainer_id}}" data-trainer="{{this.trainer_name}}"
+                    data-date="{{this.date_only}}" data-time="{{this.time_str}}"
+                    data-return-url="/manager/clients?barcode={{../barcode}}" onclick="openManageBookingModal(this)">
+
+                    <div>
+                      <strong>{{this.time_str}}</strong> — {{this.trainer_name}}
+                      <span class="text-muted ms-1">({{this.service_title}}, {{this.cost}} грн)</span>
+                      {{#if this.is_unpaid}}
+                      <span class="badge bg-danger ms-2">Не оплачено</span>
+                      {{else}}
+                      <span class="badge bg-success ms-2">Оплачено</span>
+                      {{/if}}
+                    </div>
+
+                    <form action="/manager/attend-booking" method="POST" class="d-flex gap-2 align-items-center"
+                      onclick="event.stopPropagation()">
+                      <input type="hidden" name="booking_id" value="{{this.id}}">
+                      <input type="hidden" name="trainer_id" value="{{this.trainer_id}}">
+                      <input type="hidden" name="return_url" value="/manager/clients?barcode={{../barcode}}">
+
+                      {{#if this.is_unpaid}}
+                      <select name="payment_method" class="form-select form-select-sm" style="width: auto;">
+                        <option value="cash">💵 Готівка</option>
+                        <option value="card">💳 Картка</option>
+                        {{#if this.can_pay_balance}}
+                        <option value="balance">💰 З балансу ({{this.client_balance}} грн)</option>
+                        {{/if}}
+                      </select>
+                      {{/if}}
+
+                      <button type="submit" class="btn btn-sm btn-success text-nowrap fw-bold shadow-sm">
+                        ✅ Візит + тренування
+                      </button>
+                    </form>
+                  </div>
+                  {{/each}}
+                </td>
+              </tr>
+              {{/if}}
               {{/each}}
             </tbody>
           </table>
         </div>
+        {{else}}
+        <div class="text-center p-5 text-muted">
+          <h1 class="display-4 mb-3">😕</h1>
+          <h4>Клієнта не знайдено</h4>
+          <p>Перевірте правильність введених даних або зареєструйте нового клієнта.</p>
+        </div>
+        {{/if}}
+        {{else}}
+        <div class="text-center p-5 text-muted">
+          <h1 class="display-4 mb-3">📳</h1>
+          <h4>Готово до роботи</h4>
+          <p>Зіскануйте штрихкод клієнта або скористайтеся ручним пошуком.</p>
+        </div>
+        {{/if}}
       </div>
     </div>
   </div>
+
   <div class="modal fade" id="registerModal" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -88,7 +213,18 @@
         </div>
         <div class="modal-body">
           <form action="/manager/register" method="POST">
-            <div class="mb-3"><label>ПІБ</label><input type="text" name="full_name" class="form-control" required></div>
+            <div class="mb-3">
+              <label>Прізвище</label>
+              <input type="text" name="last_name" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label>Ім'я</label>
+              <input type="text" name="first_name" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label>По батькові</label>
+              <input type="text" name="middle_name" class="form-control">
+            </div>
             <div class="mb-3"><label>Email</label><input type="email" name="email" class="form-control" required></div>
             <div class="mb-3"><label>Телефон</label><input type="text" name="phone" class="form-control" required></div>
             <div class="mb-3"><label>Дата народження</label><input type="date" name="birth_date" class="form-control"
@@ -99,6 +235,7 @@
       </div>
     </div>
   </div>
+
   <div class="modal fade" id="sellModal" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -110,18 +247,24 @@
           <p>Клієнт: <strong id="sellClientName"></strong></p>
           <form action="/manager/sell" method="POST">
             <input type="hidden" name="client_id" id="sellClientId">
-            <label class="form-label">Оберіть абонемент:</label>
-            <select name="price_id" class="form-select mb-3" required>
-              {{#each prices}}
-              <option value="{{this.id}}">{{this.title}} - {{this.cost}} грн</option>
-              {{/each}}
+
+            <label class="form-label">Оберіть послугу:</label>
+            <select name="price_id" id="sellPriceSelect" class="form-select mb-3" required>
             </select>
-            <button type="submit" class="btn btn-success w-100">Оформити</button>
+
+            <label class="form-label">Форма оплати:</label>
+            <select name="payment_method" class="form-select mb-4" required>
+              <option value="cash">💵 Готівка</option>
+              <option value="card">💳 Картка</option>
+            </select>
+
+            <button type="submit" class="btn btn-success w-100">Оформити продаж</button>
           </form>
         </div>
       </div>
     </div>
   </div>
+
   <div class="modal fade" id="editModal" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -132,43 +275,276 @@
         <div class="modal-body">
           <form action="/manager/edit-client" method="POST">
             <input type="hidden" name="id" id="editId">
-
             <div class="mb-2">
-              <label>ПІБ</label>
-              <input type="text" name="full_name" id="editName" class="form-control" required>
+              <label class="form-label">Прізвище</label>
+              <input type="text" id="editLastName" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Ім'я</label>
+              <input type="text" id="editFirstName" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">По батькові</label>
+              <input type="text" id="editMiddleName" class="form-control">
             </div>
 
+            <input type="hidden" name="full_name" id="editFullNameHidden">
             <div class="mb-2">
               <label>Email (Логін)</label>
               <input type="email" name="email" id="editEmail" class="form-control" required>
             </div>
-
             <div class="mb-3">
               <label>Телефон</label>
               <input type="text" name="phone" id="editPhone" class="form-control" required>
             </div>
-
             <button type="submit" class="btn btn-success w-100">Зберегти зміни</button>
           </form>
         </div>
       </div>
     </div>
   </div>
+
+  <div class="modal fade" id="manageBookingModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title">Керування тренуванням</h5>
+          <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3"><strong>Тренер:</strong> <span id="mbTrainer"></span></p>
+          <form action="/manager/edit-booking" method="POST">
+            <input type="hidden" name="booking_id" id="mbId">
+            <input type="hidden" name="trainer_id" id="mbTrainerId">
+            <input type="hidden" name="return_url" id="mbReturnUrl">
+
+            <label class="fw-bold mb-2">Перенести дату / час:</label>
+            <div class="row mb-4">
+              <div class="col-6">
+                <input type="date" name="new_date" id="mbDate" class="form-control" required>
+              </div>
+              <div class="col-6">
+                <select name="new_time" id="mbTime" class="form-select" required>
+                  <option>08:00</option>
+                  <option>09:00</option>
+                  <option>10:00</option>
+                  <option>11:00</option>
+                  <option>12:00</option>
+                  <option>13:00</option>
+                  <option>14:00</option>
+                  <option>15:00</option>
+                  <option>16:00</option>
+                  <option>17:00</option>
+                  <option>18:00</option>
+                  <option>19:00</option>
+                  <option>20:00</option>
+                  <option>21:00</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+              <button type="submit" class="btn btn-outline-success">💾 Перенести</button>
+              <button type="submit" formaction="/manager/cancel-booking" class="btn btn-danger"
+                onclick="return confirm('Скасувати запис? Якщо він оплачений, кошти повернуться на баланс клієнта.')">
+                ❌ Скасувати запис
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="clientBookingModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title">Запис на персональне тренування</h5>
+          <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3">Клієнт: <strong id="cbClientName"></strong></p>
+          <form action="/manager/add-booking" method="POST">
+            <input type="hidden" name="client_id" id="cbClientId">
+            <input type="hidden" name="return_url" id="cbReturnUrl">
+
+            <div class="mb-3">
+              <label class="fw-bold">Тренер</label>
+              <select name="trainer_id" class="form-select" required>
+                <option value="" disabled selected>Оберіть тренера</option>
+                {{#each trainersList}}
+                <option value="{{this.id}}">{{this.full_name}}</option>
+                {{/each}}
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="fw-bold">Послуга</label>
+              <select name="price_id" class="form-select" required>
+                {{#each personalPrices}}
+                <option value="{{this.id}}">{{this.title}} — {{this.cost}} грн</option>
+                {{/each}}
+              </select>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-6">
+                <label class="fw-bold">Дата</label>
+                <input type="date" name="start_date" class="form-control" required>
+              </div>
+              <div class="col-6">
+                <label class="fw-bold">Час</label>
+                <select name="start_time" class="form-select" required>
+                  <option>08:00</option>
+                  <option>09:00</option>
+                  <option>10:00</option>
+                  <option>11:00</option>
+                  <option>12:00</option>
+                  <option>13:00</option>
+                  <option>14:00</option>
+                  <option>15:00</option>
+                  <option>16:00</option>
+                  <option>17:00</option>
+                  <option>18:00</option>
+                  <option>19:00</option>
+                  <option>20:00</option>
+                  <option>21:00</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-success w-100">Записати</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="topupModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">Поповнення балансу</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-1">Клієнт: <strong id="tuClientName"></strong></p>
+        <p class="mb-3">Поточний баланс: <strong id="tuCurrentBalance"></strong> грн</p>
+
+        <form action="/manager/topup-balance" method="POST">
+          <input type="hidden" name="client_id" id="tuClientId">
+          <input type="hidden" name="return_url" id="tuReturnUrl">
+
+          <div class="mb-3">
+            <label class="fw-bold">Сума поповнення (грн)</label>
+            <input type="number" name="amount" id="tuAmount" class="form-control" min="1" step="1" required>
+          </div>
+
+          <div class="mb-4">
+            <label class="fw-bold">Спосіб оплати</label>
+            <select name="payment_method" class="form-select" required>
+              <option value="cash">💵 Готівка</option>
+              <option value="card">💳 Картка (Термінал)</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-success w-100 fw-bold">Підтвердити</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
   {{> footer}}
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    const allPrices = {{{ pricesJson }}};
+
     function openSellModal(btn) {
       document.getElementById('sellClientId').value = btn.dataset.id;
       document.getElementById('sellClientName').textContent = btn.dataset.name;
+
+      const hasPurchase = btn.dataset.hasPurchase === 'true';
+      const discount = Number(btn.dataset.discount) || 0;
+
+      const select = document.getElementById('sellPriceSelect');
+      select.innerHTML = '';
+
+      allPrices.forEach(item => {
+        const titleLower = (item.title || '').toLowerCase();
+        const durationLower = (item.duration || '').toLowerCase();
+        const isSingleVisit = titleLower.includes('разов') || durationLower.includes('день');
+
+        if (isSingleVisit && hasPurchase) {
+          return;
+        }
+
+        const option = document.createElement('option');
+        option.value = item.id;
+
+        if (!isSingleVisit && discount > 0) {
+          const finalCost = Math.max(0, Number(item.cost) - discount);
+          option.textContent = `${item.title} — ${finalCost} грн (знижка -${discount} грн, замість ${item.cost} грн)`;
+        } else {
+          option.textContent = `${item.title} — ${item.cost} грн`;
+        }
+
+        select.appendChild(option);
+      });
+
       new bootstrap.Modal(document.getElementById('sellModal')).show();
     }
     function openEditModal(btn) {
       document.getElementById('editId').value = btn.dataset.id;
-      document.getElementById('editName').value = btn.dataset.name;
+
+      const fullName = btn.dataset.name || '';
+      const nameParts = fullName.trim().split(/\s+/);
+
+      document.getElementById('editLastName').value = nameParts[0] || '';
+      document.getElementById('editFirstName').value = nameParts[1] || '';
+      document.getElementById('editMiddleName').value = nameParts.slice(2).join(' ') || '';
+
       document.getElementById('editEmail').value = btn.dataset.email;
       document.getElementById('editPhone').value = btn.dataset.phone;
+
       new bootstrap.Modal(document.getElementById('editModal')).show();
+    }
+
+    document.querySelector('#editModal form').addEventListener('submit', function (e) {
+      const lastName = document.getElementById('editLastName').value.trim();
+      const firstName = document.getElementById('editFirstName').value.trim();
+      const middleName = document.getElementById('editMiddleName').value.trim();
+
+      const fullName = [lastName, firstName, middleName].filter(Boolean).join(' ');
+      document.getElementById('editFullNameHidden').value = fullName;
+    });
+    function openManageBookingModal(el) {
+      document.getElementById('mbId').value = el.dataset.id;
+      document.getElementById('mbTrainerId').value = el.dataset.trainerId;
+      document.getElementById('mbTrainer').textContent = el.dataset.trainer;
+      document.getElementById('mbDate').value = el.dataset.date;
+      document.getElementById('mbTime').value = el.dataset.time;
+      document.getElementById('mbReturnUrl').value = el.dataset.returnUrl;
+
+      new bootstrap.Modal(document.getElementById('manageBookingModal')).show();
+    }
+    function openClientBookingModal(btn) {
+      document.getElementById('cbClientId').value = btn.dataset.id;
+      document.getElementById('cbClientName').textContent = btn.dataset.name;
+      document.getElementById('cbReturnUrl').value = btn.dataset.returnUrl;
+      new bootstrap.Modal(document.getElementById('clientBookingModal')).show();
+    }
+    function openTopupModal(btn) {
+      const balance = Number(btn.dataset.balance || 0);
+      document.getElementById('tuClientId').value = btn.dataset.id;
+      document.getElementById('tuClientName').textContent = btn.dataset.name;
+      document.getElementById('tuCurrentBalance').textContent = balance;
+      document.getElementById('tuReturnUrl').value = btn.dataset.returnUrl;
+      document.getElementById('tuAmount').value = balance < 0 ? Math.abs(balance) : '';
+
+      new bootstrap.Modal(document.getElementById('topupModal')).show();
     }
   </script>
 </body>
+
 </html>

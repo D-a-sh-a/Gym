@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}} | GYM</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body class="bg-light d-flex flex-column min-vh-100">
+
+  {{> menu}}
+
+  <main class="container py-3 flex-grow-1">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+      <h2 class="mb-0 fw-bold">Звіти та аналітика</h2>
+      <button onclick="window.print()" class="btn btn-outline-secondary btn-sm d-print-none">
+        🖨️ Друк / Зберегти PDF
+      </button>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4 d-print-none">
+      <div class="card-body py-3">
+        <form method="GET" action="/manager/reports" class="row g-3 align-items-end">
+          <div class="col-auto">
+            <label class="form-label small text-muted mb-1">Від</label>
+            <input type="date" name="startDate" value="{{startDate}}" class="form-control form-control-sm">
+          </div>
+          <div class="col-auto">
+            <label class="form-label small text-muted mb-1">До</label>
+            <input type="date" name="endDate" value="{{endDate}}" class="form-control form-control-sm">
+          </div>
+          <div class="col-auto">
+            <button type="submit" class="btn btn-success btn-sm px-4">Показати</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <ul class="nav nav-pills mb-4 gap-2 d-print-none" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-finance" type="button">
+          💰 1. Фінанси
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-trainers" type="button">
+          🏋️ 2. Тренери
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-clients" type="button">
+          👥 3. Клієнти
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-load" type="button">
+          📊 4. Послуги та години
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="tab-finance">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-body">
+                <div class="text-muted small mb-1">Всього надходжень</div>
+                <div class="fs-2 fw-bold text-dark">{{finance.total_sum}} ₴</div>
+                <div class="small text-muted mt-1">Операцій за період: <strong>{{finance.total_count}}</strong></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-body">
+                <div class="text-muted small mb-2">Абонементи (спосіб оплати)</div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span>Готівка:</span>
+                  <strong class="text-success">{{finance.cash_sum}} ₴</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span>Картка / онлайн:</span>
+                  <strong>{{finance.card_sum}} ₴</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-body">
+                <div class="text-muted small mb-2">Структура виручки</div>
+                <div class="d-flex justify-content-between small mb-1">
+                  <span>Абонементи:</span>
+                  <strong>{{finance.sales_sum}} ₴</strong>
+                </div>
+                <div class="d-flex justify-content-between small">
+                  <span>Персональні тренування:</span>
+                  <strong>{{finance.trainings_sum}} ₴</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="tab-trainers">
+        <div class="card border-0 shadow-sm">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th class="ps-3">Тренер</th>
+                  <th class="text-center">Проведено</th>
+                  <th class="text-center">Неявки</th>
+                  <th class="text-center">Скасовано</th>
+                  <th class="text-end pe-3">До нарахування (≈)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{#each trainersReport}}
+                <tr>
+                  <td class="ps-3 fw-medium">{{this.full_name}}</td>
+                  <td class="text-center">
+                    <span class="badge bg-success-subtle text-success fs-6">{{this.attended_count}}</span>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-danger-subtle text-danger fs-6">{{this.no_show_count}}</span>
+                  </td>
+                  <td class="text-center text-muted">{{this.cancelled_count}}</td>
+                  <td class="text-end pe-3 fw-semibold">{{this.salary_estimate}} ₴</td>
+                </tr>
+                {{else}}
+                <tr>
+                  <td colspan="5" class="text-muted text-center py-4">Даних за цей період немає</td>
+                </tr>
+                {{/each}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="tab-clients">
+        <div class="row g-4">
+          <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-header bg-white fw-semibold py-3">
+                ⏳ Закінчуються абонементи (найближчі 7 днів)
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th class="ps-3">Клієнт</th>
+                      <th>Телефон</th>
+                      <th>Абонемент</th>
+                      <th class="pe-3">Діє до</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {{#each expiringSubs}}
+                    <tr>
+                      <td class="ps-3">{{this.full_name}}</td>
+                      <td>{{this.phone}}</td>
+                      <td>{{this.sub_title}}</td>
+                      <td class="pe-3"><span class="badge bg-warning text-dark">{{this.end_date_str}}</span></td>
+                    </tr>
+                    {{else}}
+                    <tr>
+                      <td colspan="4" class="text-muted text-center py-3">Немає таких клієнтів</td>
+                    </tr>
+                    {{/each}}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-header bg-white fw-semibold py-3">
+                ⚠️ Боржники (від'ємний баланс)
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th class="ps-3">Клієнт</th>
+                      <th>Телефон</th>
+                      <th class="text-end pe-3">Баланс</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {{#each debtors}}
+                    <tr>
+                      <td class="ps-3">{{this.full_name}}</td>
+                      <td>{{this.phone}}</td>
+                      <td class="text-end pe-3 text-danger fw-bold">{{this.balance_str}} ₴</td>
+                    </tr>
+                    {{else}}
+                    <tr>
+                      <td colspan="3" class="text-muted text-center py-3">Боржників немає</td>
+                    </tr>
+                    {{/each}}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="tab-load">
+        <div class="row g-4">
+          <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-header bg-white fw-semibold py-3">🏆 Топ послуг за період</div>
+              <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th class="ps-3">Послуга</th>
+                      <th class="text-center">Продажів</th>
+                      <th class="text-end pe-3">Виручка</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {{#each topServices}}
+                    <tr>
+                      <td class="ps-3">{{this.title}}</td>
+                      <td class="text-center">{{this.sales_count}}</td>
+                      <td class="text-end pe-3 fw-semibold">{{this.revenue_str}} ₴</td>
+                    </tr>
+                    {{else}}
+                    <tr>
+                      <td colspan="3" class="text-muted text-center py-3">Продажів за період немає</td>
+                    </tr>
+                    {{/each}}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-header bg-white fw-semibold py-3">🕒 Завантаження залу по годинах</div>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th class="ps-3" style="width: 90px;">Година</th>
+                      <th class="pe-3">Тренувань</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {{#each hourlyLoad}}
+                    <tr>
+                      <td class="ps-3 fw-medium">{{this.hour_label}}</td>
+                      <td class="pe-3">
+                        <div class="d-flex align-items-center gap-2">
+                          <div class="progress flex-grow-1" style="height: 10px;">
+                            <div class="progress-bar bg-success" style="width: {{this.percent}}%"></div>
+                          </div>
+                          <span class="small fw-semibold" style="min-width: 24px;">{{this.bookings_count}}</span>
+                        </div>
+                      </td>
+                    </tr>
+                    {{else}}
+                    <tr>
+                      <td colspan="2" class="text-muted text-center py-3">Тренувань за період немає</td>
+                    </tr>
+                    {{/each}}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  {{> footer}}
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

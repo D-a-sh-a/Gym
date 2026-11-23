@@ -17,23 +17,27 @@ exports.login = async (req, res) => {
             return res.render('login', { message: 'Невірний пароль' });
         }
 
-        req.session.user = {
+        let sessionData = {
             id: user.id,
             login: user.login,
             role: user.role
         };
 
+        if (user.role === 'client') {
+            const [clientRecords] = await db.query('SELECT id FROM clients WHERE email = ?', [user.login]);
+            if (clientRecords.length > 0) {
+                sessionData.clientId = clientRecords[0].id;
+            }
+        }
+
+        req.session.user = sessionData;
+
         console.log(`Користувач ${user.login} увійшов як ${user.role}`);
 
-        if (user.role === 'manager') {
-            res.redirect('/manager/dashboard');
-        } else if (user.role === 'client') {
-            res.redirect('/client/dashboard');
-        } else if (user.role === 'trainer') {
-            res.redirect('/trainer/dashboard');
-        } else {
-            res.redirect('/');
-        }
+        if (user.role === 'manager') res.redirect('/manager/dashboard');
+        else if (user.role === 'client') res.redirect('/client/profile');
+        else if (user.role === 'trainer') res.redirect('/trainer/dashboard');
+        else res.redirect('/');
 
     } catch (error) {
         console.error(error);

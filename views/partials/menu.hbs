@@ -7,27 +7,29 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <div class="navbar-nav ms-auto align-items-center">
                 {{#unless user}}
-                    <a class="nav-link" href="/trainers">Тренери</a>
-                    <a class="nav-link" href="/price">Прайс</a>
-                    <a class="nav-link btn btn-primary-custom ms-2" href="/login">Вхід</a>
+                <a class="nav-link" href="/trainers">Тренери</a>
+                <a class="nav-link" href="/price">Прайс</a>
+                <a class="nav-link btn btn-primary-custom ms-2" href="/login">Вхід</a>
                 {{/unless}}
                 {{#if user}}
-                    {{#if (isManager user)}}
-                        <a class="nav-link text-warning fw-bold" href="/manager/dashboard">Розклад</a>
-                        <a class="nav-link text-warning fw-bold" href="/manager/clients">Клієнти</a>
-                        <a class="nav-link text-warning fw-bold" href="/manager/trainers">Тренери</a>
-                        <span class="text-white-50 ms-3">| {{user.login}} |</span>
-                    {{/if}}
-                    {{#if (isTrainer user)}}
-                        <a class="nav-link text-success fw-bold" href="/trainer/dashboard">Графік</a>
-                        <span class="text-white-50 ms-3">| {{user.login}} |</span>
-                    {{/if}}
-                    {{#if (isClient user)}}
-                         <a class="nav-link" href="/price">Прайс</a>
-                         <a class="nav-link" href="/client/dashboard">Графік</a>
-                         <a class="nav-link text-info fw-bold ms-2" href="/client/profile" title="Особистий кабінет">{{user.login}}</a>
-                    {{/if}}
-                    <a class="nav-link btn btn-primary-custom ms-2" href="/auth/logout">Вихід</a>
+                {{#if (isManager user)}}
+                <a class="nav-link text-warning fw-bold" href="/manager/dashboard">Розклад</a>
+                <a class="nav-link text-warning fw-bold" href="/manager/clients">Клієнти</a>
+                <a class="nav-link text-warning fw-bold" href="/manager/trainers">Тренери</a>
+                <a class="nav-link text-warning fw-bold" href="/manager/reports">Звіти</a>
+                <span class="text-white-50 ms-3">| {{user.login}} |</span>
+                {{/if}}
+                {{#if (isTrainer user)}}
+                <a class="nav-link text-success fw-bold" href="/trainer/dashboard">Графік</a>
+                <span class="text-white-50 ms-3">| {{user.login}} |</span>
+                {{/if}}
+                {{#if (isClient user)}}
+                <a class="nav-link" href="/price">Прайс</a>
+                <a class="nav-link" href="/client/dashboard">Графік</a>
+                <a class="nav-link text-info fw-bold ms-2" href="/client/profile"
+                    title="Особистий кабінет">{{user.login}}</a>
+                {{/if}}
+                <a class="nav-link btn btn-primary-custom ms-2" href="/auth/logout">Вихід</a>
                 {{/if}}
             </div>
         </div>

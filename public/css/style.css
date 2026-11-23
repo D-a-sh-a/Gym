@@ -134,3 +134,21 @@ body {
     color: #0f5132;
     border: 1px solid #badbcc;
 }
+
+.nav-pills .nav-link {
+    color: var(--graphite) !important;
+    background-color: var(--white);
+    border: 1px solid #dee2e6;
+    font-weight: 500;
+}
+
+.nav-pills .nav-link:hover {
+    color: var(--dark-green) !important;
+    background-color: #e9ecef;
+}
+
+.nav-pills .nav-link.active {
+    color: var(--white) !important;
+    background-color: var(--main-green) !important;
+    border-color: var(--main-green) !important;
+}
