@@ -1,5 +1,6 @@
 const cron = require('node-cron');
 const axios = require('axios');
+axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
 const db = require('../database/db');
 
 async function markNoShowBookings() {
@@ -44,7 +45,7 @@ async function markNoShowBookings() {
     }
 
     for (const booking of unpaidForBas) {
-      axios.post('http://localhost/base/hs/sync/sale', {
+      axios.post('https://operation-profound-anew.ngrok-free.dev/base/hs/sync/sale', {
         action_type: 'sale_only',
         client_guid: booking.client_bas_guid,
         service_guid: booking.service_bas_guid,
@@ -88,7 +89,7 @@ async function syncDailyPiecework(targetDate = null) {
       return;
     }
 
-    await axios.post('http://localhost/base/hs/sync/piecework', {
+    await axios.post('https://operation-profound-anew.ngrok-free.dev/base/hs/sync/piecework', {
       date: dateStr,
       items: rows
     }, {

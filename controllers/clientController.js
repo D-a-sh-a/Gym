@@ -1,6 +1,7 @@
 const db = require('../database/db');
 const bcrypt = require('bcrypt');
 const axios = require('axios');
+axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
 
 const CANCEL_FREE_HOURS = 12;
 
@@ -179,7 +180,7 @@ exports.addBooking = async (req, res, db) => {
         res.redirect('/client/dashboard');
 
         if (basActionType && client.bas_guid) {
-            axios.post('http://localhost/base/hs/sync/sale', {
+            axios.post('https://operation-profound-anew.ngrok-free.dev/base/hs/sync/sale', {
                 action_type: basActionType,
                 client_guid: client.bas_guid,
                 service_guid: service.bas_guid,
@@ -435,7 +436,7 @@ exports.buySubscription = async (req, res, db) => {
         res.redirect('/client/profile');
 
         if (bas_guid) {
-            axios.post('http://localhost/base/hs/sync/sale', {
+            axios.post('https://operation-profound-anew.ngrok-free.dev/base/hs/sync/sale', {
                 client_guid: bas_guid,
                 service_guid: service_guid,
                 service_title: priceData[0].title,

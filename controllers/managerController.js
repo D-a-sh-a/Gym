@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const mailer = require('../utils/mailer');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
+axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
 
 exports.getDashboard = async (req, res) => {
   try {
@@ -298,7 +299,7 @@ exports.sellSubscription = async (req, res) => {
     res.redirect(`/manager/clients?barcode=${barcode}`);
 
     if (bas_guid) {
-      axios.post('http://localhost/base/hs/sync/sale', {
+      axios.post('https://operation-profound-anew.ngrok-free.dev/base/hs/sync/sale', {
         client_guid: bas_guid,
         service_guid: service_guid,
         service_title: priceData[0].title,
@@ -400,7 +401,7 @@ exports.registerClient = async (req, res) => {
   mailer.sendMail(email, "Реєстрація в GYM", mailHtml, attachments)
     .catch(err => console.error("Фонова помилка пошти:", err));
 
-  axios.post('http://localhost/base/hs/sync/client', {
+  axios.post('https://operation-profound-anew.ngrok-free.dev/base/hs/sync/client', {
     full_name: full_name,
     email: email,
     phone: phone,
@@ -445,7 +446,7 @@ exports.updateClient = async (req, res) => {
     res.redirect(`/manager/clients?barcode=${barcode}`);
 
     if (basGuid) {
-      axios.post('http://localhost/base/hs/sync/client', {
+      axios.post('https://operation-profound-anew.ngrok-free.dev/base/hs/sync/client', {
         guid: basGuid,
         full_name: full_name,
         email: email,
@@ -644,7 +645,7 @@ exports.attendBooking = async (req, res) => {
     res.redirect(redirectUrl);
 
     if (needBasSale && booking.client_guid) {
-      axios.post('http://localhost/base/hs/sync/sale', {
+      axios.post('https://operation-profound-anew.ngrok-free.dev/base/hs/sync/sale', {
         client_guid: booking.client_guid,
         service_guid: booking.service_guid,
         service_title: booking.service_title,
@@ -755,7 +756,7 @@ exports.updateTrainer = async (req, res) => {
         photoBase64 = photo.toString('base64').replace(/(\r\n|\n|\r)/gm, "");
       }
 
-      axios.post('http://localhost/base/hs/sync/trainer', {
+      axios.post('https://operation-profound-anew.ngrok-free.dev/base/hs/sync/trainer', {
         guid: basGuid,
         full_name: fullName,
         email: email,
@@ -834,7 +835,7 @@ exports.topupBalance = async (req, res) => {
     res.redirect(return_url || `/manager/clients?barcode=${barcode}`);
 
     if (basGuid) {
-      axios.post('http://localhost/base/hs/sync/sale', {
+      axios.post('https://operation-profound-anew.ngrok-free.dev/base/hs/sync/sale', {
         action_type: 'payment_only',
         client_guid: basGuid,
         service_guid: null,
